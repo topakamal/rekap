@@ -347,6 +347,364 @@
             bayi: headers.findIndex(h => h.includes('bayi')),
             busui: headers.findIndex(h => h.includes('busui')),
             bumil: headers.findIndex(h => h.includes('bumil')),
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- KODE BARU UNTUK APLIKASI HOME SCREEN -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Rekap PM">
+    <meta name="apple-mobile-web-app-title" content="Rekap PM">
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>Rekap Penerima Manfaat Rejomulyo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        input[type="text"] {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        select {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: white;
+            cursor: pointer;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result-section {
+            display: none;
+            margin-top: 20px;
+        }
+        .result-card {
+            background-color: #f9f9f9;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .result-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 16px;
+            padding: 3px 0;
+        }
+        .data-label {
+            font-weight: 500;
+        }
+        .data-value {
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .total-card {
+            border-left-color: #e74c3c;
+            background-color: #fdf5f5;
+        }
+        .total-card .data-value {
+            color: #c0392b;
+            font-size: 20px;
+        }
+        .loading {
+            text-align: center;
+            font-style: italic;
+            color: #7f8c8d;
+            display: none;
+            margin-bottom: 15px;
+        }
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .note {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-weight: normal;
+        }
+        .sheet-badge {
+            display: inline-block;
+            background-color: #e67e22;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Rekap Data PM Rejomulyo</h1>
+    <p style="text-align: center; color: #7f8c8d; margin-bottom: 20px;">Masukkan link Google Sheets dan pilih hari yang ingin direkap.</p>
+    
+    <div class="input-group">
+        <input type="text" id="sheetUrl" placeholder="Masukkan Link Google Sheets di sini..." value="">
+        
+        <select id="sheetName">
+            <option value="PM UTAMA" selected>PM UTAMA</option>
+            <option value="Senin">Senin</option>
+            <option value="Selasa">Selasa</option>
+            <option value="Rabu">Rabu</option>
+            <option value="Kamis">Kamis</option>
+            <option value="Jumat">Jumat</option>
+        </select>
+        
+        <button onclick="processData()">Proses Data</button>
+    </div>
+
+    <div id="loading" class="loading">Mengambil data dari Google Sheets... Mohon tunggu.</div>
+    <div id="errorMessage" class="error"></div>
+
+    <div id="results" class="result-section">
+        
+        <h2 style="text-align: center; color: #2980b9; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 20px;">
+            Menampilkan Data: <span id="displaySheetName" class="sheet-badge">PM UTAMA</span>
+        </h2>
+
+        <div class="result-card">
+            <h3>B3 (Kelurahan Rejomulyo)</h3>
+            <div class="data-row">
+                <span class="data-label">Bumil + Busui:</span>
+                <span class="data-value" id="b3-bumil-busui">0</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Bayi:</span>
+                <span class="data-value" id="b3-bayi">0</span>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <h3>Tingkat Usia Dini/TK & SD/MI</h3>
+            <div class="data-row">
+                <span class="data-label">Porsi Besar <span class="note">(D5:D10 + G2:G10 + K2:K10)</span>:</span>
+                <span class="data-value" id="tk-sd-porsi-besar">0</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Porsi Kecil <span class="note">(C2:C10)</span>:</span>
+                <span class="data-value" id="tk-sd-porsi-kecil">0</span>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <h3>Tingkat Menengah/Atas - SMK Cahaya Surya</h3>
+            <div class="data-row">
+                <span class="data-label">Porsi Besar + Tendik + PIC:</span>
+                <span class="data-value" id="cahaya-surya-total">0</span>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <h3>Tingkat Menengah/Atas - Al Amien (MTs, MA, SMK)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sekolah</th>
+                        <th>Porsi Besar + Tendik + PIC</th>
+                    </tr>
+                </thead>
+                <tbody id="al-amien-table-body">
+                </tbody>
+            </table>
+            <div class="data-row" style="margin-top: 10px; border-top: 2px solid #ddd; padding-top: 10px;">
+                <span class="data-label">Total Al Amien:</span>
+                <span class="data-value" id="al-amien-total-all">0</span>
+            </div>
+        </div>
+
+        <div class="result-card total-card">
+            <h3>Jumlah Keseluruhan</h3>
+            <div class="data-row">
+                <span class="data-label">Total Penerima Manfaat:</span>
+                <span class="data-value" id="total-keseluruhan">0</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let currentScript = null;
+
+    function parseNumber(val) {
+        if (!val && val !== 0) return 0;
+        if (typeof val === 'number') return val;
+        const cleanVal = String(val).replace(/,/g, '').replace(/\./g, '').trim();
+        const num = parseFloat(cleanVal);
+        return isNaN(num) ? 0 : num;
+    }
+
+    function processData() {
+        const urlInput = document.getElementById('sheetUrl').value;
+        const sheetName = document.getElementById('sheetName').value;
+        const resultsDiv = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('errorMessage');
+
+        resultsDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+        
+        if (!urlInput) {
+            showError("Silakan masukkan link spreadsheet terlebih dahulu.");
+            return;
+        }
+
+        const match = urlInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (!match || match.length < 2) {
+            showError("Format link tidak valid. Pastikan itu adalah link Google Sheets.");
+            return;
+        }
+        
+        const sheetId = match[1];
+        
+        if (currentScript) {
+            document.body.removeChild(currentScript);
+        }
+
+        loadingDiv.style.display = 'block';
+
+        currentScript = document.createElement('script');
+        currentScript.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json;responseHandler:handleGoogleData&sheet=${encodeURIComponent(sheetName)}`;
+        currentScript.onerror = function() {
+            loadingDiv.style.display = 'none';
+            showError("Gagal terhubung ke Google. Pastikan koneksi internet stabil.");
+        };
+        
+        document.body.appendChild(currentScript);
+    }
+
+    function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorMessage').style.display = 'block';
+    }
+
+    function handleGoogleData(json) {
+        const loadingDiv = document.getElementById('loading');
+        const resultsDiv = document.getElementById('results');
+        
+        loadingDiv.style.display = 'none';
+
+        if (json.status === 'error') {
+            showError("Data tidak ditemukan atau akses ditolak. Pastikan nama Sheet benar dan file disetel ke 'Siapa saja yang memiliki tautan dapat melihat'.");
+            return;
+        }
+
+        let data2D = [];
+        
+        if (json.table.cols) {
+             let headers = json.table.cols.map(c => c ? (c.label || '').toString().toLowerCase() : '');
+             if (headers.some(h => h !== '')) {
+                 data2D.push(headers);
+             }
+        }
+
+        if (json.table.rows) {
+            json.table.rows.forEach(r => {
+                let row = r.c.map(c => c ? (c.v !== null && c.v !== undefined ? c.v : '') : '');
+                data2D.push(row);
+            });
+        }
+
+        let headerIndex = -1;
+        let headers = [];
+        for (let i = 0; i < data2D.length; i++) {
+            const row = data2D[i].map(String);
+            if (row.some(c => c.toLowerCase().includes('nama sekolah') || c.toLowerCase().includes('porsi kecil'))) {
+                headerIndex = i;
+                headers = row.map(h => h.toLowerCase());
+                break;
+            }
+        }
+
+        if (headerIndex === -1) {
+             showError("Tidak dapat menemukan baris header pada tabel di hari yang dipilih.");
+             return;
+        }
+
+        const colIdx = {
+            nama: headers.findIndex(h => h.includes('nama sekolah')),
+            porsiKecil: headers.findIndex(h => h.includes('porsi kecil')),
+            porsiBesar: headers.findIndex(h => h.includes('porsi besar')),
+            bayi: headers.findIndex(h => h.includes('bayi')),
+            busui: headers.findIndex(h => h.includes('busui')),
+            bumil: headers.findIndex(h => h.includes('bumil')),
             tendik: headers.findIndex(h => h.includes('tendik')),
             pic: headers.findIndex(h => h === 'pic' || h.includes('pic')),
             jumlahPm: headers.findIndex(h => h.includes('jumlah penerima manfaat') || h.includes('jumlah'))
@@ -370,7 +728,6 @@
         for (let i = headerIndex + 1; i < data2D.length; i++) {
             const row = data2D[i];
             
-            // Mendeteksi nomor baris asli Excel (header dianggap Baris 1)
             const excelRow = i + 1; 
             
             const getVal = (idx) => (idx !== -1 && row.length > idx) ? row[idx] : '';
@@ -401,27 +758,19 @@
 
             totalKeseluruhan += jumlahPm;
 
-            // ==============================================
-            // LOGIKA BARU SESUAI INSTRUKSI BARIS & KOLOM
-            // ==============================================
-            
-            // Porsi Kecil: Menjumlahkan tepat C2 sampai C10
+            // Porsi Kecil: C2:C10
             if (excelRow >= 2 && excelRow <= 10) {
                 tkSdPorsiKecil += porsiKecil;
             }
             
-            // Porsi Besar: Menjumlahkan D5:D10, G2:G10, K2:K10
+            // Porsi Besar: D5:D10, G2:G10, K2:K10
             if (excelRow >= 5 && excelRow <= 10) {
-                tkSdPorsiBesar += porsiBesar; // Kolom D
+                tkSdPorsiBesar += porsiBesar; 
             }
             if (excelRow >= 2 && excelRow <= 10) {
-                tkSdPorsiBesar += pic;        // Kolom G
-                tkSdPorsiBesar += tendik;     // Kolom K
+                tkSdPorsiBesar += pic;        
+                tkSdPorsiBesar += tendik;     
             }
-
-            // ==============================================
-            // Kategori Lainnya (B3, Cahaya Surya, Al Amien)
-            // ==============================================
 
             if (namaSekolah.includes('kelurahan rejomulyo')) {
                 b3BumilBusui += (bumil + busui);
