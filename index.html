@@ -260,6 +260,14 @@
         });
     }
 
+    // FITUR RECENT TEXT: Mengambil link yang tersimpan saat aplikasi dibuka
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedUrl = localStorage.getItem('recentSheetUrl');
+        if (savedUrl) {
+            document.getElementById('sheetUrl').value = savedUrl;
+        }
+    });
+
     let currentScript = null;
 
     function parseNumber(val) {
@@ -290,6 +298,9 @@
             showError("Format link tidak valid. Pastikan itu adalah link Google Sheets.");
             return;
         }
+        
+        // Menyimpan link valid ke Local Storage agar diingat di sesi berikutnya
+        localStorage.setItem('recentSheetUrl', urlInput);
         
         const sheetId = match[1];
         
@@ -369,7 +380,6 @@
             jumlahPm: headers.findIndex(h => h.includes('jumlah penerima manfaat') || h.includes('jumlah'))
         };
 
-        // VALIDASI 1: Cek apakah susunan index kolom ada yang bergeser
         if (
             colIdx.nama === -1 || 
             colIdx.porsiKecil !== 2 || 
@@ -381,7 +391,6 @@
             return;
         }
 
-        // VALIDASI 2: Cek urutan dan nama persis seluruh sekolah (Sesuai Gambar Terbaru)
         const expectedSchools = [
             "ra kusuma mulia xii",
             "tk dw rejomulyo",
@@ -401,7 +410,6 @@
 
         let actualSchools = [];
         
-        // Ekstrak nama sekolah dari data untuk divalidasi
         for (let i = headerIndex + 1; i < data2D.length; i++) {
             const row = data2D[i];
             const cell0 = String(row[0] || '').toLowerCase();
@@ -410,18 +418,15 @@
             }
             const rawNama = row[colIdx.nama];
             if (rawNama && String(rawNama).trim() !== '') {
-                // Bersihkan spasi ganda dan ubah huruf kecil agar validasi stabil
                 actualSchools.push(String(rawNama).toLowerCase().replace(/\s+/g, ' ').trim());
             }
         }
 
-        // Bandingkan total jumlah sekolah
         if (actualSchools.length !== expectedSchools.length) {
             showError("terdapat perubahan pada tabel, aplikasi perlu di update");
             return;
         }
 
-        // Bandingkan satu per satu berdasarkan urutannya
         for (let i = 0; i < expectedSchools.length; i++) {
             if (actualSchools[i] !== expectedSchools[i]) {
                 showError("terdapat perubahan pada tabel, aplikasi perlu di update");
@@ -429,7 +434,6 @@
             }
         }
 
-        // JIKA SEMUA VALIDASI AMAN, LANJUTKAN PERHITUNGAN
         let b3BumilBusui = 0;
         let b3Bayi = 0;
 
@@ -478,12 +482,10 @@
 
             totalKeseluruhan += jumlahPm;
 
-            // Porsi Kecil: C2:C10
             if (excelRow >= 2 && excelRow <= 10) {
                 tkSdPorsiKecil += porsiKecil;
             }
             
-            // Porsi Besar: D5:D10, G2:G10, K2:K10
             if (excelRow >= 5 && excelRow <= 10) {
                 tkSdPorsiBesar += porsiBesar; 
             }
