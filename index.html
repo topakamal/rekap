@@ -43,14 +43,74 @@
             gap: 10px;
             margin-bottom: 30px;
         }
-        input[type="text"] {
+        
+        /* STYLE UNTUK FITUR RIWAYAT PENCARIAN */
+        .input-wrapper {
+            position: relative;
             flex: 1;
             min-width: 250px;
+        }
+        input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
             padding: 12px;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
         }
+        .history-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-item:hover {
+            background-color: #f4f7f6;
+        }
+        .history-icon {
+            margin-right: 12px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+        .history-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        .history-delete {
+            padding: 5px 10px;
+            color: #95a5a6;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .history-delete:hover {
+            color: #e74c3c;
+        }
+
         select {
             padding: 12px;
             border: 1px solid #ccc;
@@ -167,7 +227,11 @@
     <p style="text-align: center; color: #7f8c8d; margin-bottom: 20px;">Masukkan link Google Sheets dan pilih hari yang ingin direkap.</p>
     
     <div class="input-group">
-        <input type="text" id="sheetUrl" placeholder="Masukkan Link Google Sheets di sini..." value="">
+        <!-- Wrapper Baru untuk Teks dan Riwayat -->
+        <div class="input-wrapper">
+            <input type="text" id="sheetUrl" placeholder="Masukkan Link Google Sheets di sini..." autocomplete="off">
+            <div id="historyDropdown" class="history-dropdown"></div>
+        </div>
         
         <select id="sheetName">
             <option value="PM UTAMA" selected>PM UTAMA</option>
@@ -260,14 +324,95 @@
         });
     }
 
-    // FITUR RECENT TEXT: Mengambil link yang tersimpan saat aplikasi dibuka
+    // ==========================================
+    // LOGIKA FITUR RIWAYAT PENCARIAN (HISTORY)
+    // ==========================================
+    const HISTORY_KEY = 'sheetUrlHistoryList';
+    let urlHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+    const urlInput = document.getElementById('sheetUrl');
+    const historyDropdown = document.getElementById('historyDropdown');
+
+    // Mengisi input otomatis dengan link paling terakhir jika ada
     document.addEventListener('DOMContentLoaded', () => {
-        const savedUrl = localStorage.getItem('recentSheetUrl');
-        if (savedUrl) {
-            document.getElementById('sheetUrl').value = savedUrl;
+        if (urlHistory.length > 0) {
+            urlInput.value = urlHistory[0];
         }
     });
 
+    function saveToHistory(url) {
+        // Hapus link yang sama jika sudah ada agar tidak duplikat
+        urlHistory = urlHistory.filter(item => item !== url);
+        // Masukkan link baru ke urutan paling atas
+        urlHistory.unshift(url);
+        // Batasi maksimal menyimpan 7 link terakhir agar tidak penuh
+        if (urlHistory.length > 7) {
+            urlHistory.pop();
+        }
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(urlHistory));
+    }
+
+    function deleteFromHistory(url, event) {
+        event.stopPropagation(); // Mencegah teks terpilih saat menekan tombol X
+        urlHistory = urlHistory.filter(item => item !== url);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(urlHistory));
+        renderHistory();
+        
+        // Kosongkan input jika link yang dihapus sedang aktif
+        if (urlInput.value === url) {
+            urlInput.value = '';
+        }
+    }
+
+    function renderHistory() {
+        historyDropdown.innerHTML = '';
+        if (urlHistory.length === 0) {
+            historyDropdown.style.display = 'none';
+            return;
+        }
+
+        urlHistory.forEach(url => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            
+            item.innerHTML = `
+                <span class="history-icon">🕒</span>
+                <span class="history-text" title="${url}">${url}</span>
+                <span class="history-delete" title="Hapus dari riwayat">✖</span>
+            `;
+            
+            // Klik isi riwayat untuk memilihnya
+            item.addEventListener('click', () => {
+                urlInput.value = url;
+                historyDropdown.style.display = 'none';
+            });
+            
+            // Klik X untuk menghapusnya
+            item.querySelector('.history-delete').addEventListener('click', (e) => deleteFromHistory(url, e));
+            
+            historyDropdown.appendChild(item);
+        });
+        
+        historyDropdown.style.display = 'block';
+    }
+
+    // Tampilkan dropdown saat mengetuk area input
+    urlInput.addEventListener('focus', () => {
+        if (urlHistory.length > 0) {
+            renderHistory();
+        }
+    });
+
+    // Sembunyikan dropdown jika mengeklik area lain di luar kotak
+    document.addEventListener('click', (e) => {
+        if (!urlInput.contains(e.target) && !historyDropdown.contains(e.target)) {
+            historyDropdown.style.display = 'none';
+        }
+    });
+
+
+    // ==========================================
+    // LOGIKA PENGOLAHAN DATA GOOGLE SHEETS
+    // ==========================================
     let currentScript = null;
 
     function parseNumber(val) {
@@ -279,7 +424,7 @@
     }
 
     function processData() {
-        const urlInput = document.getElementById('sheetUrl').value;
+        const inputVal = urlInput.value.trim();
         const sheetName = document.getElementById('sheetName').value;
         const resultsDiv = document.getElementById('results');
         const loadingDiv = document.getElementById('loading');
@@ -287,20 +432,18 @@
 
         resultsDiv.style.display = 'none';
         errorDiv.style.display = 'none';
+        historyDropdown.style.display = 'none'; // Tutup history saat klik proses
         
-        if (!urlInput) {
+        if (!inputVal) {
             showError("Silakan masukkan link spreadsheet terlebih dahulu.");
             return;
         }
 
-        const match = urlInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        const match = inputVal.match(/\/d\/([a-zA-Z0-9-_]+)/);
         if (!match || match.length < 2) {
             showError("Format link tidak valid. Pastikan itu adalah link Google Sheets.");
             return;
         }
-        
-        // Menyimpan link valid ke Local Storage agar diingat di sesi berikutnya
-        localStorage.setItem('recentSheetUrl', urlInput);
         
         const sheetId = match[1];
         
@@ -335,6 +478,9 @@
             showError("Data tidak ditemukan atau akses ditolak. Pastikan nama Sheet benar dan file disetel ke 'Siapa saja yang memiliki tautan dapat melihat'.");
             return;
         }
+
+        // Menyimpan URL ke riwayat setelah validasi akses berhasil
+        saveToHistory(urlInput.value.trim());
 
         let data2D = [];
         
