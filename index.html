@@ -211,14 +211,12 @@
             display: inline-block;
             background-color: #e67e22;
             color: white;
-            padding: 5px 10px;
+            padding: 5px 15px;
             border-radius: 4px;
-            font-size: 14px;
-            margin: 5px 5px 0 0;
+            font-size: 16px;
+            margin: 5px 0 0 0;
             vertical-align: middle;
-        }
-        .file-badge {
-            background-color: #2c3e50;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -251,10 +249,9 @@
 
     <div id="results" class="result-section">
         
-        <!-- BAGIAN TAMPILAN NAMA FILE DAN SHEET -->
+        <!-- BAGIAN TAMPILAN SHEET -->
         <div style="text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 20px;">
             <h2 style="color: #2980b9; margin: 0 0 10px 0; font-size: 18px;">Menampilkan Data:</h2>
-            <span id="displayFileName" class="sheet-badge file-badge" style="display: none;">Memuat nama file...</span>
             <span id="displaySheetName" class="sheet-badge">PM UTAMA</span>
         </div>
 
@@ -411,34 +408,6 @@
         return isNaN(num) ? 0 : num;
     }
 
-    // FUNGSI BARU: Mengambil Nama File (Title Document) menggunakan proxy
-    async function fetchDocumentTitle(sheetId) {
-        const displayFileName = document.getElementById('displayFileName');
-        displayFileName.textContent = 'Memuat nama file...';
-        displayFileName.style.display = 'inline-block';
-        
-        try {
-            const htmlViewUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(htmlViewUrl)}`;
-            
-            const response = await fetch(proxyUrl);
-            const data = await response.json();
-            
-            // Mengekstrak tag <title> dari HTML asli spreadsheet
-            const match = data.contents.match(/<title>([\s\S]*?)<\/title>/i);
-            
-            if (match && match[1]) {
-                let title = match[1].replace(' - Google Sheets', '').trim();
-                displayFileName.textContent = "📄 " + title;
-            } else {
-                displayFileName.style.display = 'none';
-            }
-        } catch (e) {
-            displayFileName.style.display = 'none';
-            console.log('Tidak dapat memuat nama file.', e);
-        }
-    }
-
     function processData() {
         const inputVal = urlInput.value.trim();
         const sheetName = document.getElementById('sheetName').value;
@@ -468,9 +437,6 @@
         }
 
         loadingDiv.style.display = 'block';
-
-        // Panggil fungsi untuk mencari nama file (berjalan di background)
-        fetchDocumentTitle(sheetId);
 
         currentScript = document.createElement('script');
         currentScript.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json;responseHandler:handleGoogleData&sheet=${encodeURIComponent(sheetName)}`;
