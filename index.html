@@ -254,7 +254,6 @@
 
     <div id="results" class="result-section">
         
-        <!-- BAGIAN TAMPILAN NAMA FILE DAN SHEET -->
         <div style="text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 20px;">
             <h2 style="color: #2980b9; margin: 0 0 10px 0; font-size: 18px;">Menampilkan Data:</h2>
             <span id="displayFileName" class="sheet-badge file-badge" style="display: none;">Memuat nama file...</span>
@@ -414,35 +413,59 @@
         return isNaN(num) ? 0 : num;
     }
 
-    // FUNGSI BARU (PROXY ALTERNATIF): Mengambil Nama File via Codetabs Proxy
+    // ==============================================================
+    // FUNGSI ROTASI 10 PROXY PRIBADI
+    // ==============================================================
     async function fetchDocumentTitle(sheetId) {
         const displayFileName = document.getElementById('displayFileName');
         displayFileName.textContent = 'Memuat nama file...';
         displayFileName.style.display = 'inline-block';
         
-        try {
-            const htmlViewUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`;
-            // Menggunakan proxy Codetabs yang mengembalikan raw HTML murni
-            const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(htmlViewUrl)}`;
-            
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error('Proxy bermasalah');
-            
-            const text = await response.text();
-            
-            // Mencari tag <title> di dalam HTML
-            const match = text.match(/<title>([\s\S]*?)<\/title>/i);
-            
-            if (match && match[1]) {
-                let title = match[1].replace(' - Google Sheets', '').trim();
-                displayFileName.textContent = "📄 " + title;
-            } else {
-                displayFileName.style.display = 'none';
+        // Daftar 10 Proxy Rotasi Anda
+        const proxyList = [
+            "http://43.160.255.142:7890",
+            "http://66.163.119.55:10006",
+            "http://66.163.118.99:10006",
+            "http://151.115.99.193:10006",
+            "http://152.228.134.176:48080",
+            "http://109.236.57.144:1080",
+            "http://165.154.20.187:10808",
+            "http://149.248.76.55:10012",
+            "http://49.51.229.43:1080",
+            "http://47.111.179.99:19518"
+        ];
+
+        const targetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`;
+        let success = false;
+
+        // Mencoba proxy satu per satu
+        for (let i = 0; i < proxyList.length; i++) {
+            try {
+                console.log(`Mencoba Proxy: ${proxyList[i]}`);
+                // Format pemanggilan untuk reverse/CORS proxy
+                const fetchUrl = `${proxyList[i]}/${targetUrl}`;
+                
+                const response = await fetch(fetchUrl);
+                if (!response.ok) throw new Error('Proxy menolak/gagal');
+                
+                const text = await response.text();
+                const match = text.match(/<title>([\s\S]*?)<\/title>/i);
+                
+                if (match && match[1]) {
+                    let title = match[1].replace(' - Google Sheets', '').trim();
+                    displayFileName.textContent = "📄 " + title;
+                    success = true;
+                    break; // Berhenti jika salah satu proxy berhasil
+                }
+            } catch (e) {
+                console.log(`Proxy ${proxyList[i]} Gagal: ${e.message}`);
+                // Otomatis lanjut ke iterasi loop proxy berikutnya
             }
-        } catch (e) {
-            // Jika proxy error, langsung sembunyikan kotak judul agar tidak nyangkut
+        }
+
+        // Jika semua 10 proxy gagal atau diblokir oleh browser (Mixed Content)
+        if (!success) {
             displayFileName.style.display = 'none';
-            console.log('Tidak dapat memuat nama file via proxy.', e);
         }
     }
 
@@ -476,7 +499,7 @@
 
         loadingDiv.style.display = 'block';
 
-        // Panggil fungsi pencari judul
+        // Panggil fungsi pencari judul dengan rotasi proxy
         fetchDocumentTitle(sheetId);
 
         currentScript = document.createElement('script');
