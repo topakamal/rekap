@@ -1,87 +1,3 @@
-<?php
-// ==============================================================================
-// 1. BAGIAN BACKEND (PHP): Khusus Menangani Rotasi Proxy & Ambil Judul File
-// ==============================================================================
-if (isset($_GET['action']) && $_GET['action'] === 'get_title' && isset($_GET['id'])) {
-    header('Content-Type: application/json');
-    
-    // Membersihkan ID Sheet untuk keamanan
-    $sheetId = preg_replace('/[^a-zA-Z0-9-_]/', '', $_GET['id']);
-    $targetUrl = "https://docs.google.com/spreadsheets/d/" . $sheetId . "/htmlview";
-
-    // Daftar 10 Proxy Anda
-    $proxies = [
-        "43.160.255.142:7890",
-        "66.163.119.55:10006",
-        "66.163.118.99:10006",
-        "151.115.99.193:10006",
-        "152.228.134.176:48080",
-        "109.236.57.144:1080",
-        "165.154.20.187:10808",
-        "149.248.76.55:10012",
-        "49.51.229.43:1080",
-        "47.111.179.99:19518"
-    ];
-
-    $title = null;
-    $success = false;
-
-    // Looping Rotasi Proxy
-    foreach ($proxies as $proxy) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $targetUrl);
-        curl_setopt($ch, CURLOPT_PROXY, $proxy); // Menggunakan proxy
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 4); // Maksimal nunggu 4 detik per proxy
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        // Menyamar sebagai browser PC agar Google tidak curiga
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-
-        $html = curl_exec($ch);
-        curl_close($ch);
-
-        // Jika berhasil terhubung dan HTML-nya berisi tag <title>
-        if ($html && preg_match('/<title>([\s\S]*?)<\/title>/i', $html, $matches)) {
-            $rawTitle = trim(str_replace(' - Google Sheets', '', $matches[1]));
-            if (!empty($rawTitle) && strpos($rawTitle, 'Sign in') === false) {
-                $title = $rawTitle;
-                $success = true;
-                break; // Stop loop jika salah satu proxy sudah berhasil
-            }
-        }
-    }
-
-    // Jika ke-10 proxy mati, coba tembak langsung lewat IP server hosting Anda (sebagai cadangan)
-    if (!$success) {
-         $ch = curl_init();
-         curl_setopt($ch, CURLOPT_URL, $targetUrl);
-         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-         curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-         $html = curl_exec($ch);
-         curl_close($ch);
-         
-         if ($html && preg_match('/<title>([\s\S]*?)<\/title>/i', $html, $matches)) {
-             $rawTitle = trim(str_replace(' - Google Sheets', '', $matches[1]));
-             if (!empty($rawTitle) && strpos($rawTitle, 'Sign in') === false) {
-                 $title = $rawTitle;
-                 $success = true;
-             }
-         }
-    }
-
-    // Kirim hasil kembali ke browser dalam format JSON
-    echo json_encode(['success' => $success, 'title' => $title]);
-    exit;
-}
-
-// ==============================================================================
-// 2. BAGIAN FRONTEND (HTML & JS): Antarmuka & Eksekutor
-// ==============================================================================
-?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -497,25 +413,59 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_title' && isset($_GET['id
         return isNaN(num) ? 0 : num;
     }
 
-    // Fungsi memanggil file PHP Backend milik kita sendiri
+    // ==============================================================
+    // FUNGSI ROTASI 10 PROXY PRIBADI
+    // ==============================================================
     async function fetchDocumentTitle(sheetId) {
         const displayFileName = document.getElementById('displayFileName');
         displayFileName.textContent = 'Memuat nama file...';
         displayFileName.style.display = 'inline-block';
         
-        try {
-            // Mengirim request ke diri sendiri (PHP)
-            const response = await fetch(`index.php?action=get_title&id=${sheetId}`);
-            const data = await response.json();
-            
-            if (data.success && data.title) {
-                displayFileName.textContent = "📄 " + data.title;
-            } else {
-                displayFileName.style.display = 'none';
+        // Daftar 10 Proxy Rotasi Anda
+        const proxyList = [
+            "http://43.160.255.142:7890",
+            "http://66.163.119.55:10006",
+            "http://66.163.118.99:10006",
+            "http://151.115.99.193:10006",
+            "http://152.228.134.176:48080",
+            "http://109.236.57.144:1080",
+            "http://165.154.20.187:10808",
+            "http://149.248.76.55:10012",
+            "http://49.51.229.43:1080",
+            "http://47.111.179.99:19518"
+        ];
+
+        const targetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`;
+        let success = false;
+
+        // Mencoba proxy satu per satu
+        for (let i = 0; i < proxyList.length; i++) {
+            try {
+                console.log(`Mencoba Proxy: ${proxyList[i]}`);
+                // Format pemanggilan untuk reverse/CORS proxy
+                const fetchUrl = `${proxyList[i]}/${targetUrl}`;
+                
+                const response = await fetch(fetchUrl);
+                if (!response.ok) throw new Error('Proxy menolak/gagal');
+                
+                const text = await response.text();
+                const match = text.match(/<title>([\s\S]*?)<\/title>/i);
+                
+                if (match && match[1]) {
+                    let title = match[1].replace(' - Google Sheets', '').trim();
+                    displayFileName.textContent = "📄 " + title;
+                    success = true;
+                    break; // Berhenti jika salah satu proxy berhasil
+                }
+            } catch (e) {
+                console.log(`Proxy ${proxyList[i]} Gagal: ${e.message}`);
+                // Otomatis lanjut ke iterasi loop proxy berikutnya
             }
-        } catch (e) {
+        }
+
+        // Jika semua 10 proxy gagal atau diblokir oleh browser (Mixed Content)
+        if (!success) {
             displayFileName.style.display = 'none';
-            console.log('Backend gagal memuat judul file.', e);
         }
     }
 
@@ -549,7 +499,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_title' && isset($_GET['id
 
         loadingDiv.style.display = 'block';
 
-        // Panggil fungsi pencari judul via PHP (jalan di background)
+        // Panggil fungsi pencari judul dengan rotasi proxy
         fetchDocumentTitle(sheetId);
 
         currentScript = document.createElement('script');
